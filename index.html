@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>SOCCER 2026</title>
+<style>
+  html,body{ width:100%; height:100%; padding:0; margin:0; overflow:hidden; }
+
+  .fullscreen-canvas{
+    background:#242424; width:100%; height:100%;
+    position:absolute; top:0; left:0;
+  }
+
+  /* Loading ekranı */
+  .loader-container{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    display:flex; justify-content:center; align-items:center;
+    background:#242424; z-index:100;
+    transition:opacity .5s ease-in-out, visibility .5s ease-in-out;
+  }
+  .loader-content{ text-align:center; }
+  .logo{
+    width:220px; height:auto; margin-bottom:50px;
+    filter:drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+    animation:fadeIn .8s ease-out, pulse 2s ease-in-out infinite;
+  }
+
+  /* Progress bar */
+  .progress-wrap{
+    width:220px; height:6px; background:rgba(255,255,255,.15);
+    border-radius:3px; margin:0 auto 18px; overflow:hidden;
+    display:none;
+  }
+  .progress-fill{
+    height:100%; width:0%; background:#fff;
+    border-radius:3px; transition:width .2s ease;
+  }
+  .progress-label{
+    font-family:sans-serif; font-size:12px;
+    color:rgba(255,255,255,.6); letter-spacing:.4px;
+    margin-bottom:18px; min-height:18px;
+  }
+
+  .spinner{
+    width:44px; height:44px; margin:0 auto;
+    border:3px solid rgba(255,255,255,.2);
+    border-top:3px solid #fff; border-right:3px solid #fff;
+    border-radius:50%; animation:spin 1s linear infinite;
+    box-shadow:0 4px 15px rgba(0,0,0,.3);
+  }
+
+  @keyframes spin    { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+  @keyframes fadeIn  { 0%{opacity:0;transform:scale(.95)} 100%{opacity:1;transform:scale(1)} }
+  @keyframes pulse   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+  .loader-hidden     { opacity:0; visibility:hidden; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas" class="fullscreen-canvas"></canvas>
+
+<div id="loader" class="loader-container">
+  <div class="loader-content">
+    <img src="logo.png" alt="Logo" class="logo" width="220" loading="eager"
+         onerror="this.style.display='none'"/>
+    <div class="progress-wrap" id="pWrap">
+      <div class="progress-fill" id="pFill"></div>
+    </div>
+    <div class="progress-label" id="pLabel"></div>
+    <div class="spinner" id="spinner"></div>
+  </div>
+</div>
+
+<!-- AudioContext unlock -->
+<script>
+(function(){
+  function u(){
+    if(window._au) return; window._au=true;
+    try{var c=new(window.AudioContext||window.webkitAudioContext)();
+      var b=c.createBuffer(1,1,22050); var s=c.createBufferSource();
+      s.buffer=b; s.connect(c.destination); s.start(0); c.resume&&c.resume();
+    }catch(e){}
+    ['touchstart','pointerdown','click'].forEach(function(t){document.removeEventListener(t,u);});
+  }
+  ['touchstart','pointerdown','click'].forEach(function(t){document.addEventListener(t,u,{passive:true});});
+})();
+</script>
+
+<!-- Hata susturucu (orijinalden) -->
+<script>
+window.addEventListener('unhandledrejection', function(e){
+  console.log('[Suppressed] Unhandled rejection:', e.reason);
+  e.preventDefault(); return true;
+});
+window.addEventListener('error', function(e){
+  if(e.message&&(e.message.includes('decode audio')||
+     e.message.includes('EncodingError')||e.message.includes('FSB failed'))){
+    console.log('[Suppressed] Audio error:', e.message);
+    e.preventDefault(); return true;
+  }
+  return false;
+});
+window.alert = (function(orig){
+  return function(msg){
+    if(msg&&(msg.includes('decode audio')||msg.includes('EncodingError')||msg.includes('FSB failed'))){
+      console.log('[Suppressed] Alert:', msg); return;
+    }
+    orig(msg);
+  };
+})(window.alert);
+</script>
+
+<script>
+/* ================================================================
+   CDN Ayarları — değiştir
+   ================================================================ */
+var CDN = "BURAYA_CDN";   /* <-- örn: https://cdn.jsdelivr.net/gh/user/repo@main */
+
+/* Build dosya adları — boşluklu isimler aynen bırakıldı */
+var LOADER    = CDN + "/Build/SOCCER 2026.loader.js";
+var DATA      = CDN + "/Build/SOCCER 2026.data.unityweb";
+var FRAMEWORK = CDN + "/Build/SOCCER 2026.framework.js.unityweb";
+var WASM      = CDN + "/Build/SOCCER 2026.wasm.unityweb";
+
+var config = {
+  dataUrl:            DATA,
+  frameworkUrl:       FRAMEWORK,
+  codeUrl:            WASM,
+  streamingAssetsUrl: CDN + "/StreamingAssets",
+  companyName:        "",
+  productName:        "SOCCER 2026",
+  productVersion:     "1.0"
+};
+
+var canvas  = document.getElementById('canvas');
+var loader  = document.getElementById('loader');
+var pWrap   = document.getElementById('pWrap');
+var pFill   = document.getElementById('pFill');
+var pLabel  = document.getElementById('pLabel');
+var spinner = document.getElementById('spinner');
+
+function setProgress(pct, label) {
+  pWrap.style.display  = 'block';
+  spinner.style.display = 'none';
+  pFill.style.width    = pct.toFixed(1) + '%';
+  pLabel.textContent   = label || '';
+}
+function hideLoader() {
+  loader.classList.add('loader-hidden');
+}
+
+/* Loader yükle → Unity başlat */
+var script = document.createElement('script');
+script.src = LOADER;
+script.onload = function() {
+  createUnityInstance(canvas, config, function(progress) {
+    setProgress(progress * 100,
+      progress < 1 ? 'Yükleniyor... ' + Math.round(progress * 100) + '%' : '');
+  }).then(function(inst) {
+    window.unityInstance = inst;
+    hideLoader();
+  }).catch(function(msg) {
+    console.error('Unity error:', msg);
+  });
+};
+script.onerror = function() {
+  pLabel.textContent = 'Yüklenemedi — CDN kontrol et';
+};
+document.body.appendChild(script);
+
+document.addEventListener('pointerdown', function() {
+  canvas.focus(); window.focus();
+});
+</script>
+
+</body>
+</html>
